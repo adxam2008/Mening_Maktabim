@@ -139,16 +139,16 @@
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 10px 20px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             transition: all 0.3s;
-            margin: 5px;
+            margin: 3px;
         }
 
         .btn:hover {
@@ -158,10 +158,23 @@
 
         .btn-danger {
             background: linear-gradient(135deg, #f56565, #c53030);
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            padding: 8px 16px;
+            font-size: 13px;
         }
 
         .btn-success {
             background: linear-gradient(135deg, #48bb78, #2f855a);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
         }
 
         table {
@@ -184,6 +197,11 @@
 
         tr:hover {
             background: #f7fafc;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
         }
 
         .form-group {
@@ -265,6 +283,7 @@
             padding: 20px;
             border-radius: 12px;
             border-left: 4px solid #667eea;
+            position: relative;
         }
 
         .schedule-card h4 {
@@ -276,6 +295,12 @@
             color: #4a5568;
             margin: 5px 0;
             font-size: 14px;
+        }
+
+        .card-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 5px;
         }
 
         .class-filter {
@@ -468,7 +493,17 @@
                 <div class="form-group">
                     <label>Sinf</label>
                     <select id="studentSinf" required>
-                        ${[...Array(11)].map((_, i) => `<option value="${i+1}">${i+1}-sinf</option>`).join('')}
+                        <option value="1">1-sinf</option>
+                        <option value="2">2-sinf</option>
+                        <option value="3">3-sinf</option>
+                        <option value="4">4-sinf</option>
+                        <option value="5">5-sinf</option>
+                        <option value="6">6-sinf</option>
+                        <option value="7">7-sinf</option>
+                        <option value="8">8-sinf</option>
+                        <option value="9">9-sinf</option>
+                        <option value="10">10-sinf</option>
+                        <option value="11">11-sinf</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -499,7 +534,17 @@
                 <div class="form-group">
                     <label>Sinf</label>
                     <select id="scheduleSinf" required>
-                        ${[...Array(11)].map((_, i) => `<option value="${i+1}">${i+1}-sinf</option>`).join('')}
+                        <option value="1">1-sinf</option>
+                        <option value="2">2-sinf</option>
+                        <option value="3">3-sinf</option>
+                        <option value="4">4-sinf</option>
+                        <option value="5">5-sinf</option>
+                        <option value="6">6-sinf</option>
+                        <option value="7">7-sinf</option>
+                        <option value="8">8-sinf</option>
+                        <option value="9">9-sinf</option>
+                        <option value="10">10-sinf</option>
+                        <option value="11">11-sinf</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -534,8 +579,19 @@
         </div>
     </div>
 
+    <!-- MODAL: Tahrirlash (universal) -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editModalTitle">Tahrirlash</h3>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div id="editModalContent"></div>
+        </div>
+    </div>
+
     <script>
-        const API_URL = 'http://localhost:8000/api';
+        const API_URL = 'http://127.0.0.1:8000/api';
         let teachers = [];
         let students = [];
         let schedule = [];
@@ -546,10 +602,10 @@
         async function loadData() {
             try {
                 const [teachersRes, studentsRes, scheduleRes, statsRes] = await Promise.all([
-                    fetch(`${API_URL}/teachers`),
-                    fetch(`${API_URL}/students`),
-                    fetch(`${API_URL}/schedule`),
-                    fetch(`${API_URL}/stats`)
+                    fetch(`${API_URL}/teachers`).catch(e => ({json: async () => []})),
+                    fetch(`${API_URL}/students`).catch(e => ({json: async () => []})),
+                    fetch(`${API_URL}/schedule`).catch(e => ({json: async () => []})),
+                    fetch(`${API_URL}/stats`).catch(e => ({json: async () => ({jami_oqituvchilar: 0, jami_oquvchilar: 0, jami_darslar: 0})}))
                 ]);
 
                 teachers = await teachersRes.json();
@@ -566,7 +622,6 @@
                 populateTeacherSelect();
             } catch (error) {
                 console.error('Xato:', error);
-                alert('Ma\'lumotlarni yuklashda xatolik! Backend ishga tushganligini tekshiring.');
             }
         }
 
@@ -598,14 +653,16 @@
 
         function filterSchedule(classNum) {
             currentClassFilter = classNum;
-            document.querySelectorAll('#classFilter .filter-btn').forEach(btn => btn.classList.remove('active'));
+            const buttons = document.querySelectorAll('#classFilter .filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             renderSchedule();
         }
 
         function filterStudents(classNum) {
             currentStudentFilter = classNum;
-            document.querySelectorAll('#studentClassFilter .filter-btn').forEach(btn => btn.classList.remove('active'));
+            const buttons = document.querySelectorAll('#studentClassFilter .filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             renderStudents();
         }
@@ -635,6 +692,10 @@
                         <div class="schedule-info">⏰ ${s.vaqt}</div>
                         <div class="schedule-info">👨‍🏫 ${teacher ? teacher.ism + ' ' + teacher.familiya : 'Noma\'lum'}</div>
                         <div class="schedule-info">🚪 Xona: ${s.xona}</div>
+                        <div class="card-actions">
+                            <button class="btn btn-warning btn-sm" onclick="editSchedule(${s.id})">✏️ Tahrirlash</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteSchedule(${s.id})">🗑️ O'chirish</button>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -661,6 +722,7 @@
                             <th>Fan</th>
                             <th>Telefon</th>
                             <th>Email</th>
+                            <th>Amallar</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -672,6 +734,12 @@
                                 <td>${t.fan}</td>
                                 <td>${t.telefon}</td>
                                 <td>${t.email || '-'}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-warning btn-sm" onclick="editTeacher(${t.id})">✏️</button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteTeacher(${t.id})">🗑️</button>
+                                    </div>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -701,6 +769,7 @@
                             <th>Yosh</th>
                             <th>Ota-onasi</th>
                             <th>Telefon</th>
+                            <th>Amallar</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -713,6 +782,12 @@
                                 <td>${s.yosh}</td>
                                 <td>${s.ota_onasi}</td>
                                 <td>${s.telefon}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-warning btn-sm" onclick="editStudent(${s.id})">✏️</button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id})">🗑️</button>
+                                    </div>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -772,6 +847,10 @@
             document.getElementById(type + 'Modal').classList.remove('active');
         }
 
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
         // O'qituvchi qo'shish
         async function addTeacher(e) {
             e.preventDefault();
@@ -797,6 +876,94 @@
                     alert('O\'qituvchi muvaffaqiyatli qo\'shildi!');
                 }
             } catch (error) {
+                alert('Xatolik yuz berdi!');
+            }
+        }
+
+        // O'qituvchi tahrirlash
+        window.editTeacher = function(id) {
+            const teacher = teachers.find(t => t.id === id);
+            if (!teacher) return;
+
+            document.getElementById('editModalTitle').textContent = 'O\'qituvchini tahrirlash';
+            document.getElementById('editModalContent').innerHTML = `
+                <form onsubmit="updateTeacher(event, ${id})">
+                    <div class="form-group">
+                        <label>Ism</label>
+                        <input type="text" id="editTeacherIsm" value="${teacher.ism}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Familiya</label>
+                        <input type="text" id="editTeacherFamiliya" value="${teacher.familiya}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fan</label>
+                        <input type="text" id="editTeacherFan" value="${teacher.fan}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="tel" id="editTeacherTelefon" value="${teacher.telefon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="editTeacherEmail" value="${teacher.email || ''}">
+                    </div>
+                    <button type="submit" class="btn btn-success">Saqlash</button>
+                </form>
+            `;
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        window.updateTeacher = async function(e, id) {
+            e.preventDefault();
+            const data = {
+                ism: document.getElementById('editTeacherIsm').value,
+                familiya: document.getElementById('editTeacherFamiliya').value,
+                fan: document.getElementById('editTeacherFan').value,
+                telefon: document.getElementById('editTeacherTelefon').value,
+                email: document.getElementById('editTeacherEmail').value
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/teachers/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    closeEditModal();
+                    await loadData();
+                    alert('O\'qituvchi muvaffaqiyatli yangilandi!');
+                }
+            } catch (error) {
+                alert('Xatolik yuz berdi!');
+            }
+        }
+
+        // O'qituvchi o'chirish
+        window.deleteTeacher = async function(id) {
+            if (!confirm('Rostdan ham o\'chirmoqchimisiz?')) return;
+
+            try {
+                const res = await fetch(`${API_URL}/teachers/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    // Darhol ro'yxatdan o'chirish
+                    teachers = teachers.filter(t => t.id !== id);
+                    renderTeachers();
+                    // Statistikani yangilash
+                    const statsRes = await fetch(`${API_URL}/stats`);
+                    const stats = await statsRes.json();
+                    updateStats(stats);
+                    alert('O\'qituvchi o\'chirildi!');
+                } else {
+                    throw new Error('O\'chirishda xatolik');
+                }
+            } catch (error) {
+                console.error('Xato:', error);
                 alert('Xatolik yuz berdi!');
             }
         }
@@ -831,6 +998,101 @@
             }
         }
 
+        // O'quvchi tahrirlash
+        window.editStudent = function(id) {
+            const student = students.find(s => s.id === id);
+            if (!student) return;
+
+            document.getElementById('editModalTitle').textContent = 'O\'quvchini tahrirlash';
+            document.getElementById('editModalContent').innerHTML = `
+                <form onsubmit="updateStudent(event, ${id})">
+                    <div class="form-group">
+                        <label>Ism</label>
+                        <input type="text" id="editStudentIsm" value="${student.ism}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Familiya</label>
+                        <input type="text" id="editStudentFamiliya" value="${student.familiya}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Sinf</label>
+                        <select id="editStudentSinf" required>
+                            ${[1,2,3,4,5,6,7,8,9,10,11].map(i => `<option value="${i}" ${student.sinf === i ? 'selected' : ''}>${i}-sinf</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Yosh</label>
+                        <input type="number" id="editStudentYosh" value="${student.yosh}" required min="6" max="18">
+                    </div>
+                    <div class="form-group">
+                        <label>Ota-onasi</label>
+                        <input type="text" id="editStudentOtaOnasi" value="${student.ota_onasi}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="tel" id="editStudentTelefon" value="${student.telefon}" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Saqlash</button>
+                </form>
+            `;
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        window.updateStudent = async function(e, id) {
+            e.preventDefault();
+            const data = {
+                ism: document.getElementById('editStudentIsm').value,
+                familiya: document.getElementById('editStudentFamiliya').value,
+                sinf: parseInt(document.getElementById('editStudentSinf').value),
+                yosh: parseInt(document.getElementById('editStudentYosh').value),
+                ota_onasi: document.getElementById('editStudentOtaOnasi').value,
+                telefon: document.getElementById('editStudentTelefon').value
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/students/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    closeEditModal();
+                    await loadData();
+                    alert('O\'quvchi muvaffaqiyatli yangilandi!');
+                }
+            } catch (error) {
+                alert('Xatolik yuz berdi!');
+            }
+        }
+
+        // O'quvchi o'chirish
+        window.deleteStudent = async function(id) {
+            if (!confirm('Rostdan ham o\'chirmoqchimisiz?')) return;
+
+            try {
+                const res = await fetch(`${API_URL}/students/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    // Darhol ro'yxatdan o'chirish
+                    students = students.filter(s => s.id !== id);
+                    renderStudents();
+                    // Statistikani yangilash
+                    const statsRes = await fetch(`${API_URL}/stats`);
+                    const stats = await statsRes.json();
+                    updateStats(stats);
+                    alert('O\'quvchi o\'chirildi!');
+                } else {
+                    throw new Error('O\'chirishda xatolik');
+                }
+            } catch (error) {
+                console.error('Xato:', error);
+                alert('Xatolik yuz berdi!');
+            }
+        }
+
         // Dars qo'shish
         async function addSchedule(e) {
             e.preventDefault();
@@ -857,6 +1119,107 @@
                     alert('Dars muvaffaqiyatli qo\'shildi!');
                 }
             } catch (error) {
+                alert('Xatolik yuz berdi!');
+            }
+        }
+
+        // Dars tahrirlash
+        window.editSchedule = function(id) {
+            const item = schedule.find(s => s.id === id);
+            if (!item) return;
+
+            document.getElementById('editModalTitle').textContent = 'Darsni tahrirlash';
+            document.getElementById('editModalContent').innerHTML = `
+                <form onsubmit="updateSchedule(event, ${id})">
+                    <div class="form-group">
+                        <label>Sinf</label>
+                        <select id="editScheduleSinf" required>
+                            ${[1,2,3,4,5,6,7,8,9,10,11].map(i => `<option value="${i}" ${item.sinf === i ? 'selected' : ''}>${i}-sinf</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Kun</label>
+                        <select id="editScheduleKun" required>
+                            ${['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'].map(k => 
+                                `<option ${item.kun === k ? 'selected' : ''}>${k}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vaqt</label>
+                        <input type="text" id="editScheduleVaqt" value="${item.vaqt}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fan</label>
+                        <input type="text" id="editScheduleFan" value="${item.fan}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>O'qituvchi</label>
+                        <select id="editScheduleTeacher" required>
+                            ${teachers.map(t => `<option value="${t.id}" ${item.teacher_id === t.id ? 'selected' : ''}>${t.ism} ${t.familiya} - ${t.fan}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Xona</label>
+                        <input type="text" id="editScheduleXona" value="${item.xona}" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Saqlash</button>
+                </form>
+            `;
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        window.updateSchedule = async function(e, id) {
+            e.preventDefault();
+            const data = {
+                sinf: parseInt(document.getElementById('editScheduleSinf').value),
+                kun: document.getElementById('editScheduleKun').value,
+                vaqt: document.getElementById('editScheduleVaqt').value,
+                fan: document.getElementById('editScheduleFan').value,
+                teacher_id: parseInt(document.getElementById('editScheduleTeacher').value),
+                xona: document.getElementById('editScheduleXona').value
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/schedule/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    closeEditModal();
+                    await loadData();
+                    alert('Dars muvaffaqiyatli yangilandi!');
+                }
+            } catch (error) {
+                alert('Xatolik yuz berdi!');
+            }
+        }
+
+        // Dars o'chirish
+        window.deleteSchedule = async function(id) {
+            if (!confirm('Rostdan ham o\'chirmoqchimisiz?')) return;
+
+            try {
+                const res = await fetch(`${API_URL}/schedule/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    // Darhol ro'yxatdan o'chirish
+                    schedule = schedule.filter(s => s.id !== id);
+                    renderSchedule();
+                    // Statistikani yangilash
+                    const statsRes = await fetch(`${API_URL}/stats`);
+                    const stats = await statsRes.json();
+                    updateStats(stats);
+                    alert('Dars o\'chirildi!');
+                } else {
+                    throw new Error('O\'chirishda xatolik');
+                }
+            } catch (error) {
+                console.error('Xato:', error);
                 alert('Xatolik yuz berdi!');
             }
         }

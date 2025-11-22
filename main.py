@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, time
-import json
+from datetime import datetime, timedelta
+import jwt
+from passlib.context import CryptContext
 
 app = FastAPI(title="Mening Maktabim API")
 
@@ -16,14 +17,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ma'lumotlar bazasi (xotirada)
+# Parol shifrlash
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT sozlamalari
+SECRET_KEY = "mening-maktabim-secret-key-2024"
+ALGORITHM = "HS256"
+
+# Ma'lumotlar bazasi
 db = {
+    "users": [],
     "teachers": [],
     "students": [],
     "schedule": []
 }
 
 # Pydantic modellar
+class User(BaseModel):
+    id: Optional[int] = None
+    username: str
+    password: str
+    role: str  # admin, teacher, parent
+    related_id: Optional[int] = None  # teacher_id yoki student_id
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    role: str
+    username: str
+
 class Teacher(BaseModel):
     id: Optional[int] = None
     ism: str
@@ -50,8 +76,47 @@ class Schedule(BaseModel):
     teacher_id: int
     xona: str
 
+# Parol funksiyalari
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=24)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
 # Boshlang'ich ma'lumotlar
 def init_data():
+    if not db["users"]:
+        db["users"] = [
+            {
+                "id": 1,
+                "username": "admin",
+                "password": hash_password("admin123"),
+                "role": "admin",
+                "related_id": None
+            },
+            {
+                "id": 2,
+                "username": "aziza",
+                "password": hash_password("123456"),
+                "role": "teacher",
+                "related_id": 1
+            },
+            {
+                "id": 3,
+                "username": "ota1",
+                "password": hash_password("123456"),
+                "role": "parent",
+                "related_id": 1
+            }
+        ]
+    
     if not db["teachers"]:
         db["teachers"] = [
             {"id": 1, "ism": "Aziza", "familiya": "Karimova", "fan": "Matematika", "telefon": "+998901234567", "email": "aziza@maktab.uz"},
@@ -79,9 +144,42 @@ def init_data():
 
 init_data()
 
-# API endpointlar
+# LOGIN
+@app.post("/api/login", response_model=Token)
+def login(user_login: UserLogin):
+    user = next((u for u in db["users"] if u["username"] == user_login.username), None)
+    
+    if not user or not verify_password(user_login.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Login yoki parol noto'g'ri")
+    
+    access_token = create_access_token({"sub": user["username"], "role": user["role"], "id": user["id"]})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user["role"],
+        "username": user["username"]
+    }
 
-# TEACHERS (O'qituvchilar)
+# REGISTER (faqat admin)
+@app.post("/api/register")
+def register(user: User):
+    # Tekshirish
+    if any(u["username"] == user.username for u in db["users"]):
+        raise HTTPException(status_code=400, detail="Bunday foydalanuvchi mavjud")
+    
+    user_id = max([u["id"] for u in db["users"]], default=0) + 1
+    new_user = {
+        "id": user_id,
+        "username": user.username,
+        "password": hash_password(user.password),
+        "role": user.role,
+        "related_id": user.related_id
+    }
+    db["users"].append(new_user)
+    return {"message": "Foydalanuvchi qo'shildi"}
+
+# TEACHERS
 @app.get("/api/teachers", response_model=List[Teacher])
 def get_teachers():
     return db["teachers"]
@@ -119,7 +217,7 @@ def delete_teacher(teacher_id: int):
     db["teachers"].pop(idx)
     return {"message": "O'qituvchi o'chirildi"}
 
-# STUDENTS (O'quvchilar)
+# STUDENTS
 @app.get("/api/students", response_model=List[Student])
 def get_students(sinf: Optional[int] = None):
     if sinf:
@@ -159,7 +257,7 @@ def delete_student(student_id: int):
     db["students"].pop(idx)
     return {"message": "O'quvchi o'chirildi"}
 
-# SCHEDULE (Dars jadvali)
+# SCHEDULE
 @app.get("/api/schedule", response_model=List[Schedule])
 def get_schedule(sinf: Optional[int] = None, teacher_id: Optional[int] = None):
     result = db["schedule"]
@@ -218,10 +316,16 @@ def get_stats():
 @app.get("/")
 def root():
     return {
-        "message": "Mening Maktabim API",
-        "version": "1.0",
-        "docs": "/docs"
+        "message": "Mening Maktabim API - Login tizimi bilan",
+        "version": "2.0",
+        "docs": "/docs",
+        "default_users": {
+            "admin": {"username": "admin", "password": "admin123"},
+            "teacher": {"username": "aziza", "password": "123456"},
+            "parent": {"username": "ota1", "password": "123456"}
+        }
     }
 
 # Serverni ishga tushirish uchun:
+# pip install pyjwt passlib bcrypt
 # uvicorn main:app --reload
